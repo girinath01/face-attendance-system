@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Attendance — AI Face Attendance{% endblock %}
+{% block topbar_title %}📷 Live Face Attendance{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 24px;">
+  <h1 class="section-title">Live Attendance Scanner</h1>
+  <p class="section-subtitle">Point the camera at students. Faces are recognized and attendance marked automatically.</p>
+</div>
+
+<div class="row g-4">
+
+  <!-- ── Left: Webcam Panel ────────────────────────────────────────── -->
+  <div class="col-lg-5">
+
+    <!-- Camera Feed -->
+    <div class="glass-card" style="margin-bottom: 20px;">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-camera" style="color:#06b6d4;margin-right:8px;"></i>Camera Feed</span>
+        <span id="webcam-status" style="font-size:12px;color:var(--text-muted);">Camera inactive</span>
+      </div>
+      <div class="card-body-glass" style="padding:16px;">
+
+        <div class="webcam-container" style="margin-bottom: 16px;">
+          <video id="webcam-video" class="webcam-video" autoplay playsinline muted></video>
+          <canvas id="capture-canvas" style="display:none;"></canvas>
+
+        <!-- Liveness Challenge Overlay -->
+        <div id="liveness-overlay" style="display:none;position:absolute;inset:0;background:rgba(10,10,26,0.85);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;backdrop-filter:blur(4px);">
+          <div style="font-size:3rem;margin-bottom:12px;animation:pulse 1s ease infinite;">👁️</div>
+          <div style="font-size:1rem;font-weight:700;color:white;margin-bottom:6px;">Liveness Check</div>
+          <div id="liveness-msg" style="font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:16px;text-align:center;max-width:180px;">Please blink naturally to verify you are live</div>
+          <div style="display:flex;gap:12px;">
+            <div id="blink-dot-1" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(99,102,241,0.5);transition:all 0.3s;"></div>
+            <div id="blink-dot-2" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(99,102,241,0.5);transition:all 0.3s;"></div>
+          </div>
+        </div>
+
+        <!-- Overlay decorations -->
+        <div class="webcam-overlay">
+          <div class="webcam-corner tl"></div>
+          <div class="webcam-corner tr"></div>
+          <div class="webcam-corner bl"></div>
+          <div class="webcam-corner br"></div>
+          <div class="scan-line" style="display:none;"></div>
+        </div>
+      </div>
+
+        <!-- Camera Controls -->
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary-glow ripple" id="btn-start-webcam" style="flex:1;justify-content:center;">
+            <i class="fa-solid fa-play"></i> Start Scanner
+          </button>
+          <button class="btn-danger-glass" id="btn-stop-webcam" style="display:none;flex:1;">
+            <i class="fa-solid fa-stop"></i> Stop
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recognition Result Card -->
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-face-smile" style="color:#22c55e;margin-right:8px;"></i>Recognition Result</span>
+      </div>
+      <div class="card-body-glass" style="padding:16px;">
+        <div id="recognition-result">
+          <div style="text-align:center;padding:24px;color:var(--text-muted);">
+            <i class="fa-solid fa-face-viewfinder" style="font-size:40px;opacity:0.3;margin-bottom:12px;display:block;"></i>
+            <p style="font-size:14px;">Start the scanner to begin recognizing faces.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual Attendance -->
+    <div class="glass-card" style="margin-top: 20px;">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-pencil" style="color:#f59e0b;margin-right:8px;"></i>Manual Mark</span>
+      </div>
+      <div class="card-body-glass" style="padding:16px;">
+        <form method="POST" action="{% url 'manual_mark_attendance' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label class="form-label">Student</label>
+            <select name="student_id" class="form-select" required id="manual-student">
+              <option value="">— Select student —</option>
+              {% for student in all_students %}
+              <option value="{{ student.pk }}">{{ student.name }} ({{ student.student_id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" name="date" class="form-control" value="{{ today|date:'Y-m-d' }}" id="manual-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select" id="manual-status">
+              <option value="present">Present</option>
+              <option value="late">Late</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-success-glass" style="width:100%;">
+            <i class="fa-solid fa-check"></i> Mark Attendance
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Right: Attendance Log + Live Feed ─────────────────────────── -->
+  <div class="col-lg-7">
+
+    <!-- Live Feed Panel -->
+    <div class="glass-card" style="margin-bottom: 20px;border-color:rgba(16,185,129,0.2);">
+      <div class="card-header-glass">
+        <span class="card-title">
+          <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 1.5s ease infinite;margin-right:8px;"></span>
+          <i class="fa-solid fa-satellite-dish" style="color:#10b981;margin-right:6px;"></i>Live Attendance Feed
+        </span>
+        <span id="live-feed-count" style="font-size:12px;color:var(--text-muted);">Connecting...</span>
+      </div>
+      <div id="live-feed-list" style="max-height:160px;overflow-y:auto;padding:8px 12px;">
+        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:6px;"></i>Waiting for events...
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="glass-card" style="margin-bottom: 20px;">
+      <div class="card-body-glass" style="padding:16px;">
+        <form method="GET" action="{% url 'attendance' %}" id="filter-form">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              {{ form.date }}
+            </div>
+            <div class="col-md-3">
+              {{ form.department }}
+            </div>
+            <div class="col-md-2">
+              {{ form.year }}
+            </div>
+            <div class="col-md-3">
+              {{ form.search }}
+            </div>
+            <div class="col-md-1">
+              <button type="submit" class="btn-primary-glow" style="padding:10px 14px;width:100%;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-list-check" style="color:#818cf8;margin-right:8px;"></i>
+          Attendance Records
+          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:8px;">
+            ({{ total_shown }} records)
+          </span>
+        </span>
+        <a href="{% url 'export_csv' %}" class="btn-glass" style="font-size:12px;padding:6px 14px;">
+          <i class="fa-solid fa-file-csv"></i> Export
+        </a>
+      </div>
+      <div id="attendance-table-wrap" style="overflow-x:auto;max-height:520px;overflow-y:auto;">
+        {% if attendances %}
+        <table class="table-glass">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>ID</th>
+              <th>Dept</th>
+              <th>Date</th>
+              <th>Time In</th>
+              <th>Status</th>
+              <th>Conf.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for att in attendances %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  {% if att.student.photo %}
+                    <img src="{{ att.student.photo.url }}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+                  {% else %}
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--gradient-main);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;">{{ att.student.name|first }}</div>
+                  {% endif %}
+                  <span style="font-weight:500;color:var(--text-primary);font-size:13px;">{{ att.student.name }}</span>
+                </div>
+              </td>
+              <td style="font-family:monospace;font-size:12px;color:#818cf8;">{{ att.student.student_id }}</td>
+              <td style="font-size:12px;">{{ att.student.department }}</td>
+              <td style="font-size:12px;white-space:nowrap;">{{ att.date|date:"M d" }}</td>
+              <td style="font-size:12px;font-variant-numeric:tabular-nums;">{{ att.time_in|time:"H:i"|default:"—" }}</td>
+              <td><span class="badge-{{ att.status }}">{{ att.status|capfirst }}</span></td>
+              <td style="font-size:12px;color:{% if att.confidence_percent >= 70 %}#4ade80{% elif att.confidence_percent >= 50 %}#fbbf24{% else %}#94a3b8{% endif %};">
+                {% if att.confidence_percent > 0 %}{{ att.confidence_percent }}%{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <i class="fa-solid fa-calendar-xmark"></i>
+          <p>No attendance records found for the selected filters.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── SSE Live Attendance Feed ──────────────────────────────────────────────
+(function() {
+  const list = document.getElementById('live-feed-list');
+  const countEl = document.getElementById('live-feed-count');
+  let eventCount = 0;
+
+  const es = new EventSource('/api/live-feed/');
+  es.onopen = () => {
+    countEl.textContent = 'Connected ✓';
+    list.innerHTML = '<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.3);font-size:12px;">Waiting for new records today...</div>';
+  };
+  es.onmessage = e => {
+    const att = JSON.parse(e.data);
+    eventCount++;
+    countEl.textContent = `${eventCount} event${eventCount !== 1 ? 's' : ''} today`;
+
+    const statusColor = att.status === 'present' ? '#10b981' : att.status === 'late' ? '#f59e0b' : '#ef4444';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,0.05);animation:fadeInDown 0.4s ease both;';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;">${att.name.charAt(0)}</div>
+        <div>
+          <div style="font-weight:600;font-size:0.82rem;">${att.name}</div>
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">${att.student_id} · ${att.department}</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:700;">${att.status.charAt(0).toUpperCase()+att.status.slice(1)}</span>
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-top:2px;">${att.time_in}</div>
+      </div>`;
+    list.prepend(row);
+
+    // Keep max 10 items
+    while (list.children.length > 10) list.removeChild(list.lastChild);
+  };
+  es.onerror = () => { countEl.textContent = 'Reconnecting...'; };
+})();
+
+// ── Liveness Detection State Machine ─────────────────────────────────────
+window.livenessState = {
+  active: false,
+  confirmed: false,
+  blinkCount: 0,
+  required: 2,
+  pendingRequest: false,
+};
+
+function startLivenessCheck() {
+  const ls = window.livenessState;
+  ls.active = true;
+  ls.confirmed = false;
+  ls.blinkCount = 0;
+
+  const overlay = document.getElementById('liveness-overlay');
+  if (overlay) overlay.style.display = 'flex';
+
+  updateBlinkDots(0);
+
+  // Reset server-side session
+  fetch('/api/liveness/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+    body: JSON.stringify({ frame: '', reset: true })
+  }).catch(() => {});
+}
+
+function updateBlinkDots(count) {
+  const dot1 = document.getElementById('blink-dot-1');
+  const dot2 = document.getElementById('blink-dot-2');
+  const msg  = document.getElementById('liveness-msg');
+  if (!dot1 || !dot2) return;
+  if (count >= 1) { dot1.style.background = '#6366f1'; dot1.style.borderColor = '#6366f1'; dot1.style.boxShadow = '0 0 8px #6366f1'; }
+  if (count >= 2) { dot2.style.background = '#6366f1'; dot2.style.borderColor = '#6366f1'; dot2.style.boxShadow = '0 0 8px #6366f1'; }
+  if (msg) {
+    if (count === 0) msg.textContent = 'Please blink naturally to verify you are live';
+    else if (count === 1) msg.textContent = 'Good! Blink one more time...';
+    else msg.textContent = '✓ Liveness confirmed!';
+  }
+}
+
+function checkLiveness(frameB64) {
+  const ls = window.livenessState;
+  if (!ls.active || ls.confirmed || ls.pendingRequest) return;
+  ls.pendingRequest = true;
+
+  fetch('/api/liveness/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content },
+    body: JSON.stringify({ frame: frameB64 })
+  })
+  .then(r => r.json())
+  .then(data => {
+    ls.pendingRequest = false;
+    ls.blinkCount = data.blink_count || 0;
+    updateBlinkDots(ls.blinkCount);
+    if (data.is_live) {
+      ls.confirmed = true;
+      ls.active = false;
+      const overlay = document.getElementById('liveness-overlay');
+      if (overlay) {
+        setTimeout(() => { overlay.style.display = 'none'; }, 800);
+      }
+      // Signal that liveness is done — allow recognition to proceed
+      if (window.onLivenessConfirmed) window.onLivenessConfirmed();
+    }
+  })
+  .catch(() => { ls.pendingRequest = false; });
+}
+
+// Expose for main.js integration
+window.startLivenessCheck = startLivenessCheck;
+window.checkLiveness = checkLiveness;
+</script>
+{% endblock %}

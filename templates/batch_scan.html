@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Batch Scan — FaceAttend AI{% endblock %}
+{% block topbar_title %}Batch Classroom Scan{% endblock %}
+
+{% block extra_head %}
+<style>
+.upload-zone {
+  border: 2px dashed rgba(99,102,241,0.4);
+  border-radius: 16px;
+  padding: 60px 40px;
+  text-align: center;
+  background: rgba(99,102,241,0.04);
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: #6366f1;
+  background: rgba(99,102,241,0.1);
+  transform: scale(1.01);
+}
+.upload-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon { font-size: 3.5rem; color: #6366f1; margin-bottom: 16px; }
+.upload-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+.upload-sub { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
+.preview-section { display: none; }
+.preview-img {
+  width: 100%; border-radius: 12px;
+  max-height: 400px; object-fit: contain;
+  background: rgba(0,0,0,0.3);
+}
+.scan-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none; color: white; padding: 14px 32px;
+  border-radius: 12px; font-size: 1rem; font-weight: 700;
+  cursor: pointer; transition: all 0.3s; width: 100%; justify-content: center;
+  margin-top: 16px;
+}
+.scan-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.5); }
+.scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.face-card {
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.08);
+  transition: all 0.3s;
+  animation: fadeInUp 0.4s ease both;
+}
+.face-card.recognized { border-color: rgba(16,185,129,0.5); }
+.face-card.unknown { border-color: rgba(239,68,68,0.4); }
+.face-card img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.face-card-info { padding: 10px 12px; }
+.face-name { font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
+.face-conf { font-size: 0.7rem; color: rgba(255,255,255,0.4); }
+.face-status { font-size: 0.75rem; font-weight: 700; }
+.face-status.ok { color: #10b981; }
+.face-status.unknown { color: #ef4444; }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mark-all-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4);
+  color: #10b981; padding: 10px 20px; border-radius: 10px;
+  font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem;
+}
+.mark-all-btn:hover { background: rgba(16,185,129,0.25); transform: translateY(-2px); }
+.scanning-spinner {
+  display: none;
+  text-align: center;
+  padding: 40px;
+}
+.spinner-ring {
+  width: 60px; height: 60px;
+  border: 4px solid rgba(99,102,241,0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+
+  <!-- Upload Section -->
+  <div class="chart-card" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;margin-bottom:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+      <i class="fa-solid fa-users" style="color:#6366f1;"></i>
+      Upload Classroom Photo
+    </h3>
+    <p style="color:rgba(255,255,255,0.4);font-size:0.85rem;margin-bottom:20px;">Upload a group photo to automatically detect and recognize all student faces at once.</p>
+
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="photo-input" accept="image/*">
+      <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div class="upload-title">Drop a classroom photo here</div>
+      <div class="upload-sub">Supports JPG, PNG, WebP — max 10MB</div>
+    </div>
+
+    <div class="preview-section" id="preview-section">
+      <img id="preview-img" class="preview-img" src="" alt="Preview">
+      <button class="scan-btn" id="scan-btn" onclick="runBatchScan()">
+        <i class="fa-solid fa-radar"></i> Scan All Faces
+      </button>
+    </div>
+  </div>
+
+  <!-- Scanning Spinner -->
+  <div class="scanning-spinner" id="scanning-spinner">
+    <div class="spinner-ring"></div>
+    <div style="color:rgba(255,255,255,0.6);font-size:0.95rem;">Analyzing faces — this may take a few seconds…</div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h3 style="font-size:1.1rem;font-weight:700;margin:0;">Scan Results</h3>
+        <p id="results-summary" style="color:rgba(255,255,255,0.4);font-size:0.85rem;margin:4px 0 0;"></p>
+      </div>
+      <button class="mark-all-btn" id="mark-all-btn" onclick="markAllPresent()">
+        <i class="fa-solid fa-check-double"></i> Mark All Recognized Present
+      </button>
+    </div>
+    <div class="results-grid" id="results-grid"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let scanResults = [];
+const photoInput = document.getElementById('photo-input');
+const uploadZone = document.getElementById('upload-zone');
+const previewSection = document.getElementById('preview-section');
+const previewImg = document.getElementById('preview-img');
+
+photoInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    previewImg.src = ev.target.result;
+    uploadZone.style.display = 'none';
+    previewSection.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag and drop
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { photoInput.files = e.dataTransfer.files; photoInput.dispatchEvent(new Event('change')); }
+});
+
+function runBatchScan() {
+  const file = photoInput.files[0];
+  if (!file) return;
+
+  const scanBtn = document.getElementById('scan-btn');
+  const spinner = document.getElementById('scanning-spinner');
+  const resultsSection = document.getElementById('results-section');
+
+  scanBtn.disabled = true;
+  spinner.style.display = 'block';
+  resultsSection.style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('photo', file);
+  formData.append('csrfmiddlewaretoken', document.querySelector('meta[name=csrf-token]').content);
+
+  fetch('/api/batch-scan/', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      spinner.style.display = 'none';
+      scanBtn.disabled = false;
+      if (data.error) { alert('Error: ' + data.error); return; }
+      scanResults = data.results;
+      renderResults(data);
+    })
+    .catch(err => {
+      spinner.style.display = 'none';
+      scanBtn.disabled = false;
+      alert('Scan failed: ' + err);
+    });
+}
+
+function renderResults(data) {
+  const grid = document.getElementById('results-grid');
+  const summary = document.getElementById('results-summary');
+  const resultsSection = document.getElementById('results-section');
+  grid.innerHTML = '';
+
+  const recognized = data.results.filter(r => !r.is_unknown).length;
+  const unknown = data.results.length - recognized;
+  summary.textContent = `Found ${data.results.length} face(s) — ${recognized} recognized, ${unknown} unknown`;
+
+  data.results.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = `face-card ${r.is_unknown ? 'unknown' : 'recognized'}`;
+    card.style.animationDelay = `${i * 0.05}s`;
+    card.innerHTML = `
+      <img src="data:image/jpeg;base64,${r.face_image}" alt="Face">
+      <div class="face-card-info">
+        <div class="face-name">${r.student_name || 'Unknown'}</div>
+        <div class="face-conf">${r.is_unknown ? 'Not recognized' : 'Confidence: ' + Math.round(r.confidence*100) + '%'}</div>
+        <div class="face-status ${r.is_unknown ? 'unknown' : 'ok'}">${r.is_unknown ? '✗ Unknown' : '✓ Identified'}</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  resultsSection.style.display = 'block';
+}
+
+function markAllPresent() {
+  const btn = document.getElementById('mark-all-btn');
+  const recognized = scanResults.filter(r => !r.is_unknown && r.student_id);
+  if (recognized.length === 0) { alert('No recognized students to mark.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Marking...';
+
+  const csrfToken = document.querySelector('meta[name=csrf-token]').content;
+  fetch('/api/batch-mark-present/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ student_ids: recognized.map(r => r.student_id) })
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.innerHTML = `<i class="fa-solid fa-check"></i> Marked ${data.marked} students present!`;
+      btn.style.color = '#10b981';
+    })
+    .catch(() => { btn.disabled = false; btn.innerHTML = 'Error — retry'; });
+}
+</script>
+{% endblock %}

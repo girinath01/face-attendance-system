@@ -1,0 +1,97 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Page Not Found | AI Face Attendance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.25) 0%, transparent 70%),
+                  radial-gradient(ellipse 60% 50% at 80% 110%, rgba(6,182,212,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      max-width: 600px;
+      position: relative;
+      z-index: 1;
+    }
+    .error-code {
+      font-size: clamp(100px, 20vw, 180px);
+      font-weight: 900;
+      background: linear-gradient(135deg, #6366f1, #06b6d4, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 40px rgba(99,102,241,0.3));
+    }
+    .icon-wrap {
+      font-size: 64px;
+      margin-bottom: 24px;
+      opacity: 0.4;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 16px;
+      color: #94a3b8;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.5); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-wrap">🔍</div>
+    <div class="error-code">404</div>
+    <h1>Page Not Found</h1>
+    <p>The page you're looking for doesn't exist or has been moved.</p>
+    <a href="{% url 'dashboard' %}" class="btn">
+      <i class="fa-solid fa-house"></i> Back to Dashboard
+    </a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reports — AI Face Attendance{% endblock %}
+{% block topbar_title %}📄 Attendance Reports{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+  <div>
+    <h1 class="section-title">Attendance Reports</h1>
+    <p class="section-subtitle" style="margin-bottom:0;">
+      {{ start_date|date:"M d" }} — {{ end_date|date:"M d, Y" }} &middot; {{ total_records }} records
+    </p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="{% url 'export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+       class="btn-glass">
+      <i class="fa-solid fa-file-csv"></i> Export CSV
+    </a>
+    <div style="position:relative;display:inline-block;">
+      <button onclick="document.getElementById('pdf-menu').classList.toggle('show')" class="btn-primary-glow" style="padding:10px 16px;font-size:13px;">
+        <i class="fa-solid fa-file-pdf"></i> Export PDF ▾
+      </button>
+      <div id="pdf-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:rgba(15,15,30,0.95);border:1px solid rgba(255,255,255,0.12);border-radius:12px;min-width:200px;z-index:100;overflow:hidden;backdrop-filter:blur(20px);">
+        <div style="padding:8px 0;">
+          <div style="padding:8px 16px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);">By Student</div>
+          {% for s in student_stats|slice:":10" %}
+          <a href="{% url 'export_pdf' %}?student={{ s.student.pk }}&start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}"
+             style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:0.83rem;transition:background 0.2s;"
+             onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background='transparent'">
+            <i class="fa-solid fa-user" style="color:#6366f1;width:14px;"></i> {{ s.student.name|truncatechars:22 }}
+          </a>
+          {% endfor %}
+          <hr style="border-color:rgba(255,255,255,0.08);margin:6px 0;">
+          <div style="padding:8px 16px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);">By Department</div>
+          <a href="{% url 'export_pdf' %}?department=CSE&start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:0.83rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-building" style="color:#06b6d4;width:14px;"></i> CSE</a>
+          <a href="{% url 'export_pdf' %}?department=ECE&start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:0.83rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-building" style="color:#06b6d4;width:14px;"></i> ECE</a>
+          <a href="{% url 'export_pdf' %}?department=IT&start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:0.83rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-building" style="color:#06b6d4;width:14px;"></i> IT</a>
+          <a href="{% url 'export_pdf' %}?department=AIDS&start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}" style="display:flex;align-items:center;gap:8px;padding:8px 16px;color:rgba(255,255,255,0.8);text-decoration:none;font-size:0.83rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background='transparent'"><i class="fa-solid fa-building" style="color:#06b6d4;width:14px;"></i> AIDS</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>document.addEventListener('click',function(e){var m=document.getElementById('pdf-menu');if(m&&!e.target.closest('[onclick]')&&m.classList.contains('show'))m.classList.remove('show');});</script>
+
+<!-- Filter -->
+<div class="glass-card" style="margin-bottom:24px;">
+  <div class="card-body-glass" style="padding:16px;">
+    <form method="GET">
+      <div class="row g-2">
+        <div class="col-md-3">
+          {{ form.date }}
+        </div>
+        <div class="col-md-3">
+          {{ form.department }}
+        </div>
+        <div class="col-md-2">
+          {{ form.year }}
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn-primary-glow" style="width:100%;justify-content:center;">
+            <i class="fa-solid fa-filter"></i> Filter
+          </button>
+        </div>
+        <div class="col-md-2">
+          <a href="{% url 'reports' %}" class="btn-glass" style="width:100%;justify-content:center;">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Low Attendance Alert -->
+{% if low_attendance %}
+<div class="glass-card" style="margin-bottom:24px;border-color:rgba(239,68,68,0.3);">
+  <div class="card-header-glass">
+    <span class="card-title" style="color:#f87171;">
+      <i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;"></i>
+      Low Attendance Alert — {{ low_attendance|length }} Student{{ low_attendance|length|pluralize }}
+    </span>
+    <span style="font-size:12px;color:var(--text-muted);">Below 75% threshold</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="table-glass">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>ID</th>
+          <th>Department</th>
+          <th>Present</th>
+          <th>Absent</th>
+          <th>Attendance %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in low_attendance %}
+        <tr>
+          <td style="font-weight:500;color:var(--text-primary);">{{ s.student.name }}</td>
+          <td style="font-family:monospace;color:#818cf8;">{{ s.student.student_id }}</td>
+          <td>{{ s.student.department }}</td>
+          <td style="color:#4ade80;">{{ s.present }}</td>
+          <td style="color:#f87171;">{{ s.absent }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="progress-glass" style="width:80px;">
+                <div class="progress-fill red" style="width:{{ s.percentage }}%;"></div>
+              </div>
+              <span style="color:#f87171;font-weight:700;">{{ s.percentage }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Full Student Report Table -->
+<div class="glass-card">
+  <div class="card-header-glass">
+    <span class="card-title"><i class="fa-solid fa-table" style="color:#6366f1;margin-right:8px;"></i>Student-wise Summary</span>
+  </div>
+  <div style="overflow-x:auto;">
+    {% if student_stats %}
+    <table class="table-glass">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student</th>
+          <th>ID</th>
+          <th>Department</th>
+          <th>Year</th>
+          <th>Present</th>
+          <th>Absent</th>
+          <th>Attendance %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in student_stats %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;">{{ forloop.counter }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              {% if s.student.photo %}
+                <img src="{{ s.student.photo.url }}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
+              {% else %}
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--gradient-main);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;">{{ s.student.name|first }}</div>
+              {% endif %}
+              <span style="font-weight:500;color:var(--text-primary);">{{ s.student.name }}</span>
+            </div>
+          </td>
+          <td style="font-family:monospace;font-size:12px;color:#818cf8;">{{ s.student.student_id }}</td>
+          <td style="font-size:13px;">{{ s.student.department }}</td>
+          <td style="font-size:13px;">Year {{ s.student.year }}</td>
+          <td style="color:#4ade80;font-weight:600;">{{ s.present }}</td>
+          <td style="color:#f87171;font-weight:600;">{{ s.absent }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;min-width:140px;">
+              <div class="progress-glass" style="flex:1;">
+                <div class="progress-fill {% if s.percentage >= 75 %}green{% elif s.percentage >= 50 %}yellow{% else %}red{% endif %}"
+                     style="width:{{ s.percentage }}%;"></div>
+              </div>
+              <span style="font-weight:700;color:{% if s.percentage >= 75 %}#4ade80{% elif s.percentage >= 50 %}#fbbf24{% else %}#f87171{% endif %};font-size:13px;min-width:38px;text-align:right;">
+                {{ s.percentage }}%
+              </span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-chart-bar"></i>
+      <p>No data available for selected filters.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

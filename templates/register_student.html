@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register Student — AI Face Attendance{% endblock %}
+{% block topbar_title %}👤 Register New Student{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 24px;">
+  <h1 class="section-title">Student Registration</h1>
+  <p class="section-subtitle">Add a new student and capture their face for recognition.</p>
+</div>
+
+<div class="row g-4">
+
+  <!-- ── Registration Form ──────────────────────────────────────────── -->
+  <div class="col-lg-8">
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-user-plus" style="color:#6366f1;margin-right:8px;"></i>Student Details</span>
+        <a href="{% url 'student_list' %}" class="btn-glass" style="font-size:12px;padding:6px 14px;">
+          <i class="fa-solid fa-list"></i> View All Students
+        </a>
+      </div>
+      <div class="card-body-glass">
+        <form method="POST" enctype="multipart/form-data" id="registration-form" novalidate>
+          {% csrf_token %}
+          <!-- Hidden field for captured webcam photo -->
+          <input type="hidden" name="captured_photo" id="captured_photo">
+
+          <div class="row g-3">
+            <!-- Student ID -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="student_id">
+                  <i class="fa-solid fa-id-card" style="color:#6366f1;margin-right:5px;"></i>Student ID *
+                </label>
+                {{ form.student_id }}
+                {% for error in form.student_id.errors %}
+                  <div style="color:#f87171;font-size:12px;margin-top:4px;"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Full Name -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="name">
+                  <i class="fa-solid fa-user" style="color:#6366f1;margin-right:5px;"></i>Full Name *
+                </label>
+                {{ form.name }}
+                {% for error in form.name.errors %}
+                  <div style="color:#f87171;font-size:12px;margin-top:4px;"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Department -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="department">
+                  <i class="fa-solid fa-building-columns" style="color:#6366f1;margin-right:5px;"></i>Department *
+                </label>
+                {{ form.department }}
+              </div>
+            </div>
+
+            <!-- Year -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="year">
+                  <i class="fa-solid fa-calendar" style="color:#6366f1;margin-right:5px;"></i>Year *
+                </label>
+                {{ form.year }}
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="email">
+                  <i class="fa-solid fa-envelope" style="color:#6366f1;margin-right:5px;"></i>Email *
+                </label>
+                {{ form.email }}
+                {% for error in form.email.errors %}
+                  <div style="color:#f87171;font-size:12px;margin-top:4px;"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Phone -->
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label" for="phone">
+                  <i class="fa-solid fa-phone" style="color:#6366f1;margin-right:5px;"></i>Phone
+                </label>
+                {{ form.phone }}
+              </div>
+            </div>
+
+            <!-- Photo Upload -->
+            <div class="col-12">
+              <div class="form-group">
+                <label class="form-label" for="photo">
+                  <i class="fa-solid fa-image" style="color:#6366f1;margin-right:5px;"></i>Upload Photo (or use webcam below)
+                </label>
+                {{ form.photo }}
+                <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+                  Upload a clear, front-facing photo with good lighting. Supported: JPG, PNG.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Photo Preview -->
+          <div style="margin: 16px 0;">
+            <img id="photo-preview"
+                 src=""
+                 alt="Photo preview"
+                 style="display:none;width:120px;height:120px;border-radius:16px;object-fit:cover;border:3px solid rgba(99,102,241,0.5);">
+          </div>
+
+          <!-- Submit -->
+          <hr class="divider">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="submit" class="btn-primary-glow ripple" id="register-btn">
+              <i class="fa-solid fa-user-plus"></i> Register Student
+            </button>
+            <a href="{% url 'student_list' %}" class="btn-glass">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Webcam Capture Panel ────────────────────────────────────────── -->
+  <div class="col-lg-4">
+    <div class="glass-card" style="position:sticky;top:80px;">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-camera" style="color:#06b6d4;margin-right:8px;"></i>Webcam Capture</span>
+      </div>
+      <div class="card-body-glass">
+
+        <!-- Webcam preview -->
+        <div class="webcam-container" style="margin-bottom:16px;aspect-ratio:1;">
+          <video id="webcam-video" class="webcam-video" autoplay playsinline muted></video>
+          <canvas id="capture-canvas" style="display:none;"></canvas>
+          <div class="webcam-overlay">
+            <div class="webcam-corner tl"></div>
+            <div class="webcam-corner tr"></div>
+            <div class="webcam-corner bl"></div>
+            <div class="webcam-corner br"></div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn-primary-glow ripple" id="btn-start-cam" onclick="App.startRegistrationWebcam()">
+            <i class="fa-solid fa-video"></i> Start Camera
+          </button>
+          <button class="btn-glass" id="btn-capture-photo" disabled>
+            <i class="fa-solid fa-camera"></i> Capture Photo
+          </button>
+        </div>
+
+        <div style="margin-top:16px;padding:12px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:10px;font-size:12px;color:#94a3b8;">
+          <i class="fa-solid fa-circle-info" style="color:#06b6d4;margin-right:6px;"></i>
+          Position the student's face clearly in the frame before capturing. Ensure good lighting.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Recent Registrations ───────────────────────────────────────────── -->
+{% if recent_students %}
+<div class="glass-card" style="margin-top: 28px;">
+  <div class="card-header-glass">
+    <span class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:#8b5cf6;margin-right:8px;"></i>Recently Registered</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="table-glass">
+      <thead>
+        <tr>
+          <th>Photo</th>
+          <th>Name</th>
+          <th>Student ID</th>
+          <th>Department</th>
+          <th>Face Encoding</th>
+          <th>Registered</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in recent_students %}
+        <tr>
+          <td>
+            {% if student.photo %}
+              <img src="{{ student.photo.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+            {% else %}
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--gradient-main);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{{ student.name|first }}</div>
+            {% endif %}
+          </td>
+          <td style="font-weight:500;color:var(--text-primary);">{{ student.name }}</td>
+          <td style="font-family:monospace;color:#818cf8;">{{ student.student_id }}</td>
+          <td>{{ student.department }}</td>
+          <td>
+            {% if student.has_face_encoding %}
+              <span class="badge-encoded"><i class="fa-solid fa-check"></i> Encoded</span>
+            {% else %}
+              <span class="badge-pending"><i class="fa-solid fa-clock"></i> Pending</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted);font-size:12px;">{{ student.date_registered|date:"M d, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Override capture button to use registration mode (no recognition loop)
+  document.getElementById('btn-start-cam').addEventListener('click', function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Starting...';
+    App.startRegistrationWebcam().then(() => {
+      this.innerHTML = '<i class="fa-solid fa-video"></i> Camera Running';
+    });
+  });
+
+  // Register form submit state
+  document.getElementById('registration-form').addEventListener('submit', function() {
+    const btn = document.getElementById('register-btn');
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Registering...';
+    btn.disabled = true;
+  });
+</script>
+{% endblock %}

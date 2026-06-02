@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard — AI Face Attendance{% endblock %}
+{% block topbar_title %}📊 Dashboard Overview{% endblock %}
+
+{% block extra_head %}
+<!-- Inject chart data as JS variables -->
+<script>
+  const weeklyLabels = {{ weekly_labels|safe }};
+  const weeklyData   = {{ weekly_data|safe }};
+  const deptLabels   = {{ dept_labels|safe }};
+  const deptCounts   = {{ dept_counts|safe }};
+</script>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Page Header ──────────────────────────────────────────────────── -->
+<div style="margin-bottom: 28px;">
+  <h1 class="section-title">Welcome back, {{ request.user.first_name|default:request.user.username }} 👋</h1>
+  <p class="section-subtitle">
+    Here's your attendance overview for
+    <strong style="color: var(--text-primary);">{{ today|date:"l, F j Y" }}</strong>
+  </p>
+</div>
+
+<!-- ── Stat Cards ───────────────────────────────────────────────────── -->
+<div class="row g-4 mb-4" id="auto-refresh-stats">
+
+  <div class="col-lg-3 col-md-6">
+    <div class="stat-card purple">
+      <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+      <div>
+        <div class="stat-value" id="stat-total" data-target="{{ total_students }}">0</div>
+        <div class="stat-label">Total Students</div>
+      </div>
+      <div>
+        <span class="stat-badge" style="background:rgba(99,102,241,0.2);color:#818cf8;">
+          <i class="fa-solid fa-circle" style="font-size:6px;"></i> Registered
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6">
+    <div class="stat-card green">
+      <div class="stat-icon"><i class="fa-solid fa-user-check"></i></div>
+      <div>
+        <div class="stat-value" id="stat-present" data-target="{{ present_today }}">0</div>
+        <div class="stat-label">Present Today</div>
+      </div>
+      <div>
+        <span class="stat-badge" style="background:rgba(34,197,94,0.2);color:#4ade80;">
+          <i class="fa-solid fa-arrow-trend-up" style="font-size:10px;"></i> Today
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6">
+    <div class="stat-card red">
+      <div class="stat-icon"><i class="fa-solid fa-user-xmark"></i></div>
+      <div>
+        <div class="stat-value" id="stat-absent" data-target="{{ absent_today }}">0</div>
+        <div class="stat-label">Absent Today</div>
+      </div>
+      <div>
+        <span class="stat-badge" style="background:rgba(239,68,68,0.2);color:#f87171;">
+          <i class="fa-solid fa-circle-exclamation" style="font-size:10px;"></i> Absent
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6">
+    <div class="stat-card cyan">
+      <div class="stat-icon"><i class="fa-solid fa-percent"></i></div>
+      <div>
+        <div class="stat-value" id="stat-pct">{{ attendance_pct }}%</div>
+        <div class="stat-label">Attendance Rate</div>
+      </div>
+      <div>
+        <div class="progress-glass" style="margin-top: 4px;">
+          <div class="progress-fill {% if attendance_pct >= 75 %}green{% elif attendance_pct >= 50 %}yellow{% else %}red{% endif %}"
+               data-width="{{ attendance_pct }}"
+               style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Warning: Unencoded Students ──────────────────────────────────── -->
+{% if unencoded_students > 0 %}
+<div class="alert-glass warning" style="margin-bottom: 24px;">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  <strong>{{ unencoded_students }} student(s)</strong> have no face encoding.
+  <a href="{% url 'settings' %}" style="color:#fbbf24;font-weight:600;"> Re-train encodings →</a>
+</div>
+{% endif %}
+
+<!-- ── Charts Row ────────────────────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- Weekly Bar Chart -->
+  <div class="col-lg-7">
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-chart-bar" style="color:#6366f1;margin-right:8px;"></i>Weekly Attendance</span>
+        <span style="font-size:12px;color:var(--text-muted);">Last 7 days</span>
+      </div>
+      <div class="card-body-glass">
+        <div class="chart-container" style="height: 240px;">
+          <canvas id="weeklyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Department Doughnut -->
+  <div class="col-lg-5">
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-chart-donut" style="color:#8b5cf6;margin-right:8px;"></i>By Department</span>
+      </div>
+      <div class="card-body-glass">
+        <div class="chart-container" style="height: 240px;">
+          <canvas id="deptChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Recent Attendance Log ─────────────────────────────────────────── -->
+<div class="glass-card">
+  <div class="card-header-glass">
+    <span class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:#06b6d4;margin-right:8px;"></i>Recent Attendance Logs</span>
+    <a href="{% url 'attendance' %}" class="btn-glass" style="font-size:12px;padding:7px 14px;">
+      View All <i class="fa-solid fa-arrow-right"></i>
+    </a>
+  </div>
+  <div style="overflow-x: auto;">
+    {% if recent_logs %}
+    <table class="table-glass" id="recent-log-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>ID</th>
+          <th>Department</th>
+          <th>Date</th>
+          <th>Time In</th>
+          <th>Status</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for att in recent_logs %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              {% if att.student.photo %}
+                <img src="{{ att.student.photo.url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid rgba(99,102,241,0.3);">
+              {% else %}
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--gradient-main);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;">
+                  {{ att.student.name|first }}
+                </div>
+              {% endif %}
+              <span style="font-weight:500;color:var(--text-primary);">{{ att.student.name }}</span>
+            </div>
+          </td>
+          <td style="font-family:monospace;color:#818cf8;">{{ att.student.student_id }}</td>
+          <td>{{ att.student.department }}</td>
+          <td>{{ att.date|date:"M d, Y" }}</td>
+          <td>{{ att.time_in|time:"H:i:s"|default:"—" }}</td>
+          <td>
+            <span class="badge-{{ att.status }}">{{ att.status|capfirst }}</span>
+          </td>
+          <td>
+            {% if att.confidence_percent > 0 %}
+            <span style="color:{% if att.confidence_percent >= 70 %}#4ade80{% elif att.confidence_percent >= 50 %}#fbbf24{% else %}#f87171{% endif %};font-weight:600;font-size:13px;">
+              {{ att.confidence_percent }}%
+            </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <p>No attendance records yet. Start the live scanner to begin.</p>
+      <a href="{% url 'attendance' %}" class="btn-primary-glow" style="margin-top:16px;">
+        <i class="fa-solid fa-camera"></i> Start Attendance
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

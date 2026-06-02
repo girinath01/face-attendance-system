@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}All Students — AI Face Attendance{% endblock %}
+{% block topbar_title %}👥 Student Management{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+  <div>
+    <h1 class="section-title">All Students</h1>
+    <p class="section-subtitle" style="margin-bottom:0;">{{ total_count }} student{{ total_count|pluralize }} registered</p>
+  </div>
+  <a href="{% url 'register_student' %}" class="btn-primary-glow">
+    <i class="fa-solid fa-user-plus"></i> Add New Student
+  </a>
+</div>
+
+<!-- Search & Filter -->
+<div class="glass-card" style="margin-bottom:24px;">
+  <div class="card-body-glass" style="padding:16px;">
+    <form method="GET">
+      <div class="row g-2">
+        <div class="col-md-5">
+          <input type="text" name="q" class="form-control" placeholder="🔍 Search by name or ID..." value="{{ query }}" id="search-input">
+        </div>
+        <div class="col-md-3">
+          <select name="dept" class="form-select" id="dept-filter">
+            <option value="">All Departments</option>
+            {% for code, name in departments %}
+            <option value="{{ code }}" {% if dept == code %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="year" class="form-select" id="year-filter">
+            <option value="">All Years</option>
+            {% for y in "1234" %}
+            <option value="{{ y }}" {% if year == y %}selected{% endif %}>Year {{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn-primary-glow" style="width:100%;justify-content:center;">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Student Grid -->
+{% if students %}
+<div class="row g-3">
+  {% for student in students %}
+  <div class="col-lg-3 col-md-4 col-sm-6">
+    <div class="student-card fade-in">
+
+      <!-- Encoding indicator -->
+      <div style="position:absolute;top:12px;right:12px;">
+        {% if student.has_face_encoding %}
+          <span title="Face encoded" style="color:#4ade80;font-size:16px;"><i class="fa-solid fa-circle-check"></i></span>
+        {% else %}
+          <span title="No face encoding" style="color:#f59e0b;font-size:16px;"><i class="fa-solid fa-circle-exclamation"></i></span>
+        {% endif %}
+      </div>
+
+      <!-- Photo -->
+      {% if student.photo %}
+        <img src="{{ student.photo.url }}" class="student-photo" alt="{{ student.name }}">
+      {% else %}
+        <div class="student-photo-placeholder">{{ student.name|first|upper }}</div>
+      {% endif %}
+
+      <!-- Info -->
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">{{ student.name }}</div>
+      <div style="font-family:monospace;font-size:12px;color:#818cf8;margin-bottom:4px;">{{ student.student_id }}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        {{ student.department }} &middot; Year {{ student.year }}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        {{ student.email }}
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        {% if not student.has_face_encoding %}
+        <a href="{% url 'reencode_student' student.pk %}"
+           class="btn-success-glass"
+           title="Re-generate face encoding">
+          <i class="fa-solid fa-rotate"></i>
+        </a>
+        {% endif %}
+
+        <form method="POST" action="{% url 'delete_student' student.pk %}"
+              onsubmit="return confirm('Remove {{ student.name }}? This will disable their account.');">
+          {% csrf_token %}
+          <button type="submit" class="btn-danger-glass" title="Remove student">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="glass-card">
+  <div class="empty-state">
+    <i class="fa-solid fa-users-slash"></i>
+    <p>No students found matching your search.</p>
+    <a href="{% url 'register_student' %}" class="btn-primary-glow" style="margin-top:16px;">
+      <i class="fa-solid fa-user-plus"></i> Register First Student
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

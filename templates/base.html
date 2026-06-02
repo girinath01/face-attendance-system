@@ -1,0 +1,211 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI Face Attendance Management System — Smart attendance powered by face recognition">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}AI Face Attendance System{% endblock %}</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <!-- Brand -->
+    <div class="sidebar-brand">
+      <a href="{% url 'dashboard' %}" class="brand-logo">
+        <div class="brand-icon">🎓</div>
+        <div class="brand-name">
+          FaceAttend AI
+          <span>Attendance System</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main Menu</div>
+
+      <a href="{% url 'dashboard' %}"
+         class="nav-item {% if page == 'dashboard' %}active{% endif %}"
+         id="nav-dashboard">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="{% url 'attendance' %}"
+         class="nav-item {% if page == 'attendance' %}active{% endif %}"
+         id="nav-attendance">
+        <i class="fa-solid fa-camera"></i>
+        <span>Live Attendance</span>
+      </a>
+
+      <div class="nav-section-title" style="margin-top:10px;">Students</div>
+
+      <a href="{% url 'register_student' %}"
+         class="nav-item {% if page == 'register' and request.resolver_match.url_name == 'register_student' %}active{% endif %}"
+         id="nav-register">
+        <i class="fa-solid fa-user-plus"></i>
+        <span>Register Student</span>
+      </a>
+
+      <a href="{% url 'student_list' %}"
+         class="nav-item {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"
+         id="nav-students">
+        <i class="fa-solid fa-users"></i>
+        <span>All Students</span>
+      </a>
+
+      <a href="{% url 'batch_scan' %}"
+         class="nav-item {% if page == 'batch_scan' %}active{% endif %}"
+         id="nav-batch">
+        <i class="fa-solid fa-users-viewfinder"></i>
+        <span>Batch Scan</span>
+      </a>
+
+      <div class="nav-section-title" style="margin-top:10px;">Reports</div>
+
+      <a href="{% url 'reports' %}"
+         class="nav-item {% if page == 'reports' %}active{% endif %}"
+         id="nav-reports">
+        <i class="fa-solid fa-file-chart-line"></i>
+        <span>Reports</span>
+      </a>
+
+      <a href="{% url 'analytics' %}"
+         class="nav-item {% if page == 'analytics' %}active{% endif %}"
+         id="nav-analytics">
+        <i class="fa-solid fa-chart-mixed"></i>
+        <span>Analytics</span>
+        <span style="margin-left:auto;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:10px;">NEW</span>
+      </a>
+
+      <a href="{% url 'export_csv' %}"
+         class="nav-item"
+         id="nav-export">
+        <i class="fa-solid fa-file-csv"></i>
+        <span>Export CSV</span>
+      </a>
+
+      <div class="nav-section-title" style="margin-top:10px;">System</div>
+
+      <a href="{% url 'settings' %}"
+         class="nav-item {% if page == 'settings' %}active{% endif %}"
+         id="nav-settings">
+        <i class="fa-solid fa-gear"></i>
+        <span>Settings</span>
+      </a>
+
+      <a href="{% url 'student_login' %}"
+         class="nav-item"
+         id="nav-portal"
+         target="_blank">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span>Student Portal</span>
+        <span style="margin-left:auto;background:rgba(6,182,212,0.2);color:#06b6d4;font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:10px;">NEW</span>
+      </a>
+
+      <a href="/admin/"
+         class="nav-item"
+         id="nav-admin"
+         target="_blank">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>Django Admin</span>
+      </a>
+    </nav>
+
+    <!-- User Footer -->
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar">{{ request.user.first_name|default:request.user.username|first|upper }}</div>
+        <div class="user-info">
+          <div class="user-name truncate">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="user-role">Administrator</div>
+        </div>
+      </div>
+      <a href="{% url 'logout' %}" class="nav-item" style="margin-top:8px;" id="nav-logout">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('sidebar-open'); this.classList.remove('active');"></div>
+
+  <!-- ── Main Content ────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <button class="sidebar-toggle" id="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('sidebar-open'); document.querySelector('.sidebar-overlay').classList.toggle('active');">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="topbar-title">{% block topbar_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-right">
+        <span class="topbar-time" id="live-clock"></span>
+        <div id="live-indicator" style="display:none;align-items:center;gap:6px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:5px 12px;font-size:0.75rem;color:#10b981;font-weight:600;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#10b981;animation:pulse 1.5s ease infinite;"></span>
+          <span id="live-indicator-text">Live</span>
+        </div>
+        <a href="{% url 'batch_scan' %}" style="padding:8px 14px;font-size:13px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.7);text-decoration:none;display:flex;align-items:center;gap:6px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+          <i class="fa-solid fa-users-viewfinder"></i>
+          <span>Batch</span>
+        </a>
+        <a href="{% url 'attendance' %}" class="btn-primary-glow" style="padding:8px 16px;font-size:13px;">
+          <i class="fa-solid fa-camera"></i>
+          <span>Live Scan</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Django Messages -->
+    {% if messages %}
+    <div style="padding: 16px 28px 0;">
+      {% for message in messages %}
+      <div class="alert-glass {% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} alert-auto-hide">
+        <i class="fa-solid {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-times-circle{% elif message.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-info-circle{% endif %}"></i>
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page Content -->
+    <div class="page-content fade-in">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- ── Scripts ────────────────────────────────────────────────────── -->
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- App JS -->
+  <script src="{% static 'js/main.js' %}"></script>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

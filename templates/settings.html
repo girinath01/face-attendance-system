@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Settings — AI Face Attendance{% endblock %}
+{% block topbar_title %}⚙️ System Settings{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 24px;">
+  <h1 class="section-title">Settings</h1>
+  <p class="section-subtitle">Manage your admin profile, password, and system configuration.</p>
+</div>
+
+<div class="row g-4">
+
+  <!-- ── Left Column ──────────────────────────────────────────────── -->
+  <div class="col-lg-8">
+
+    <!-- Profile Settings -->
+    <div class="glass-card" style="margin-bottom: 24px;">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-user-circle" style="color:#6366f1;margin-right:8px;"></i>Admin Profile</span>
+      </div>
+      <div class="card-body-glass">
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_profile">
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label">First Name</label>
+                {{ profile_form.first_name }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="form-label">Last Name</label>
+                {{ profile_form.last_name }}
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label class="form-label">Email Address</label>
+                {{ profile_form.email }}
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-glow ripple">
+            <i class="fa-solid fa-floppy-disk"></i> Save Profile
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="glass-card" style="margin-bottom: 24px;">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-key" style="color:#f59e0b;margin-right:8px;"></i>Change Password</span>
+      </div>
+      <div class="card-body-glass">
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="change_password">
+
+          {% for field in password_form %}
+          <div class="form-group">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}
+            <div style="color:#f87171;font-size:12px;margin-top:4px;"><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+
+          <button type="submit" class="btn-glass ripple" style="color:#fbbf24;border-color:rgba(245,158,11,0.3);">
+            <i class="fa-solid fa-lock"></i> Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Face Encoding Management -->
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-brain" style="color:#8b5cf6;margin-right:8px;"></i>Face Encoding Management</span>
+      </div>
+      <div class="card-body-glass">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:14px;color:var(--text-primary);font-weight:500;">Re-train Encodings</div>
+            <div style="font-size:13px;color:var(--text-muted);">
+              Automatically generate face encodings for students who have photos but are not yet encoded.
+            </div>
+          </div>
+          <a href="{% url 'retrain_api' %}" class="btn-primary-glow ripple" id="retrain-btn">
+            <i class="fa-solid fa-rotate"></i> Re-train Now
+          </a>
+        </div>
+
+        <!-- Encoding stats -->
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="padding:12px 20px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:10px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#4ade80;">{{ encoded_students }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Encoded</div>
+          </div>
+          <div style="padding:12px 20px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#fbbf24;">{{ pending_students }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Pending</div>
+          </div>
+          <div style="padding:12px 20px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#818cf8;">{{ total_students }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Total Students</div>
+          </div>
+          <div style="padding:12px 20px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2);border-radius:10px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#22d3ee;">{{ total_attendance }}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Total Records</div>
+          </div>
+        </div>
+
+        <!-- AI Library Status -->
+        <div style="margin-top:20px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">AI Library Status</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;
+              background:{% if ai_status.numpy %}rgba(34,197,94,0.12){% else %}rgba(239,68,68,0.12){% endif %};
+              border:1px solid {% if ai_status.numpy %}rgba(34,197,94,0.3){% else %}rgba(239,68,68,0.3){% endif %};
+              color:{% if ai_status.numpy %}#4ade80{% else %}#f87171{% endif %};">
+              <i class="fa-solid fa-{% if ai_status.numpy %}check{% else %}xmark{% endif %}"></i> numpy
+            </span>
+            <span style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;
+              background:{% if ai_status.opencv %}rgba(34,197,94,0.12){% else %}rgba(239,68,68,0.12){% endif %};
+              border:1px solid {% if ai_status.opencv %}rgba(34,197,94,0.3){% else %}rgba(239,68,68,0.3){% endif %};
+              color:{% if ai_status.opencv %}#4ade80{% else %}#f87171{% endif %};">
+              <i class="fa-solid fa-{% if ai_status.opencv %}check{% else %}xmark{% endif %}"></i> opencv
+            </span>
+            <span style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;
+              background:{% if ai_status.face_recognition %}rgba(34,197,94,0.12){% else %}rgba(239,68,68,0.12){% endif %};
+              border:1px solid {% if ai_status.face_recognition %}rgba(34,197,94,0.3){% else %}rgba(239,68,68,0.3){% endif %};
+              color:{% if ai_status.face_recognition %}#4ade80{% else %}#f87171{% endif %};">
+              <i class="fa-solid fa-{% if ai_status.face_recognition %}check{% else %}xmark{% endif %}"></i> face_recognition
+            </span>
+          </div>
+          {% if not ai_status.all_ready %}
+          <div style="margin-top:10px;font-size:12px;color:#fbbf24;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Face recognition is not fully available. See <a href="/" style="color:#818cf8;">README</a> for installation instructions.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Right Column ─────────────────────────────────────────────── -->
+  <div class="col-lg-4">
+
+    <!-- Admin Profile Card -->
+    <div class="glass-card" style="margin-bottom: 20px;">
+      <div class="card-body-glass" style="text-align:center;padding:32px;">
+        <div style="width:80px;height:80px;background:var(--gradient-main);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:white;margin:0 auto 16px;box-shadow:0 8px 25px rgba(99,102,241,0.4);">
+          {{ user.first_name|default:user.username|first|upper }}
+        </div>
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary);">{{ user.get_full_name|default:user.username }}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">{{ user.email }}</div>
+        <div style="display:inline-block;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-top:8px;">
+          <i class="fa-solid fa-shield-halved"></i> Administrator
+        </div>
+        <hr class="divider">
+        <div style="font-size:12px;color:var(--text-muted);">
+          Member since {{ user.date_joined|date:"M Y" }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-card">
+      <div class="card-header-glass">
+        <span class="card-title"><i class="fa-solid fa-bolt" style="color:#f59e0b;margin-right:8px;"></i>Quick Actions</span>
+      </div>
+      <div class="card-body-glass" style="display:flex;flex-direction:column;gap:10px;">
+        <a href="{% url 'register_student' %}" class="btn-glass" style="width:100%;">
+          <i class="fa-solid fa-user-plus"></i> Register New Student
+        </a>
+        <a href="{% url 'attendance' %}" class="btn-glass" style="width:100%;">
+          <i class="fa-solid fa-camera"></i> Open Live Scanner
+        </a>
+        <a href="{% url 'export_csv' %}" class="btn-glass" style="width:100%;">
+          <i class="fa-solid fa-file-csv"></i> Export Full CSV
+        </a>
+        <a href="/admin/" class="btn-glass" style="width:100%;" target="_blank">
+          <i class="fa-solid fa-shield-halved"></i> Django Admin Panel
+        </a>
+        <hr class="divider" style="margin:4px 0;">
+        <a href="{% url 'logout' %}" class="btn-danger-glass" style="width:100%;text-align:center;">
+          <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById('retrain-btn').addEventListener('click', function(e) {
+    this.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Training...';
+    this.style.pointerEvents = 'none';
+  });
+</script>
+{% endblock %}

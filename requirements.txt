@@ -1,0 +1,21 @@
+# ── Core Django stack ──────────────────────────────────────────
+Django>=4.2,<5.0
+Pillow>=10.0
+numpy>=1.24
+
+# ── AI / Face Recognition ─────────────────────────────────────
+# These install without any extra build tools:
+opencv-python>=4.8
+
+# face-recognition requires dlib which needs CMake + C++ compiler.
+# On Windows: install Visual Studio Build Tools with C++ workload first.
+# Then run:
+#   pip install cmake wheel
+#   pip install dlib
+#   pip install face-recognition
+#
+# On macOS/Linux:
+#   pip install cmake dlib face-recognition
+#
+# The app works without face-recognition (all features except live AI scanning).
+# face-recognition>=1.3

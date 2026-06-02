@@ -170,8 +170,3 @@ After running `createsuperuser`:
 - **Username**: `admin`
 - **Password**: *(whatever you set)*
 
----
-
-## License
-
-MIT License — Free for educational and commercial use.
